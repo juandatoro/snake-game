@@ -4,31 +4,59 @@ const score = document.getElementById('score');
 const ctx = canvas.getContext('2d');
 
 const scale = 16;
-const rows = canvas.height / scale;
-const columns = canvas.width / scale;
 
-let snake;
-let food;
+let rows = canvas.height / scale;
+let columns = canvas.width / scale;
+let speed = 200;
+let turbo = false;
 
-(function setup(){
-  snake = new Snake(ctx, scale);
-  food = new Food(ctx, scale);
 
-  food.pickLocation(rows, columns, scale);
-  
-  window.setInterval(()=>{
-    ctx.clearRect(0,0, canvas.width, canvas.height);
-    snake.update(800, 800);
-    food.draw();
-    snake.draw();
+const food = new Food(rows, columns, scale);
+const specialFood = new SpecialFood(rows, columns, scale);
+const snake = new Snake(rows, columns, scale);
 
-    if(snake.eat(food)) {
-      food.pickLocation(rows, columns)
-    }
-  }, 250)
-}())
+const draw = () => {
+  snake.move();
 
-window.addEventListener('keydown', (evt => {
-  const direction = evt.key.replace('Arrow', '');
-  snake.changeDirection(direction);
+  if(snake.wallCollition()){
+    console.log(snake.getDir(), snake.body)
+    snake.draw(ctx);
+
+    return 
+  }
+
+  if(snake.selfCollition()){
+    return
+  }
+
+  if(snake.head.x == food.x && snake.head.y == food.y) {
+    snake.eat(food, 'normal');
+  }
+  if(specialFood.covered.find(el => el.x === snake.head.x && el.y === snake.head.y)) {
+    snake.eat(specialFood, 'special');
+  }
+
+  ctx.clearRect(0,0, canvas.width, canvas.height);
+  food.draw(ctx);
+  specialFood.draw(ctx);
+  snake.draw(ctx);
+
+  score.innerHTML = snake.getScore();
+  setTimeout(draw,turbo ? 50 : 500)
+}
+
+document.addEventListener('keydown', function(evt){
+  const dir = evt.key.replace('Arrow', '');
+  if(!turbo && dir === ' ') turbo = true;
+  if((dir === 'Left') || (dir === 'Right') || (dir === 'Down') || (dir === 'Up')) snake.changeDir(dir);
+})
+
+document.addEventListener('keyup', (evt => {
+  if(turbo && evt.key === ' ') turbo = false;
 }))
+
+const runProgram = (function () {
+  draw();
+})()
+
+

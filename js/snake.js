@@ -1,74 +1,142 @@
-function Snake(ctx, scale) {
-  this.x = 0;
-  this.y = 0;
-  this.xSpeed = scale;
-  this.ySpeed = 0;
-  this.total = 0;
-  this.tail = [];
+const Snake = function(rows, columns, scale) {
+  let direction = ['Right'];
+  let score = 0;
+  let grow = 0;
+  let tailDirection = 'Right'
+  
+  this.rows = rows;
+  this.columns = columns;
+  this.scale = scale;
 
-
-  this.draw = function() {
-    ctx.fillStyle = "#FFFFFF";
-    for(let i=0; i<this.tail.length; i++) {
-      ctx.fillRect(this.tail[i].x, this.tail[i].y, scale, scale);
-      ctx.strokeStyle = 'red'
-      ctx.strokeRect(this.tail[i].x, this.tail[i].y, scale, scale)
+  this.body = [
+    {
+      x: rows / 2 * scale,
+      y: columns / 2 * scale
     }
-    ctx.fillRect(this.x, this.y, scale, scale);
-    ctx.strokeStyle = 'blue'
-    ctx.strokeRect(this.x, this.y, scale, scale);
-  }
+  ];
 
-  this.update = function(width, height) {
-    for(let i=0; i<this.tail.length - 1; i++) {
-      this.tail[i] = this.tail[i+1]
-    }
+  this.head = this.body[0];
 
-    this.tail[this.total - 1] = {x: this.x, y: this.y}
-
-    this.x += this.xSpeed;
-    this.y += this.ySpeed;
-
-    if(this.x > width) {
-      this.x = 0;
-    }
-    if(this.y > height) {
-      this.y = 0;
-    }
-    if(this.x < 0) {
-      this.x = width;
-    }
-    if(this.y < 0) {
-      this.y = height;
+  this.getDir = function() {
+    if(direction.length > 1) {
+      return direction.shift()
+    } else {
+      return direction[0];
     }
   }
 
-  this.changeDirection = function(direction) {
-    switch(direction){
-      case 'Up': 
-        this.xSpeed = 0;
-        this.ySpeed = -scale;
-        break;
-      case 'Down': 
-        this.xSpeed = 0;
-        this.ySpeed = scale;
-        break;
-      case 'Left': 
-        this.xSpeed = -scale;
-        this.ySpeed = 0;
-        break;
-      case 'Right': 
-        this.xSpeed = scale;
-        this.ySpeed = 0;
-        break;
+  this.overideDir = function(newDir) {
+    direction = [newDir] 
+  }
+
+  this.changeDir = function(newDir) {
+    const currDir = direction[direction.length - 1];
+    const goFromXToY = ((currDir === 'Left' || currDir === 'Right') && (newDir !== 'Right' && newDir !== 'Left'));
+    const goFromYtoX = ((currDir === 'Down' || currDir === 'Up') && (newDir !== 'Down' && newDir !== 'Up'));
+
+    if(this.body.length > 1){
+      (goFromXToY || goFromYtoX) && direction.push(newDir)
+    } else {
+      direction.push(newDir)
     }
   }
 
-  this.eat = function(food) {
-    if(this.x === food.x && this.y === food.y) {
-      this.total++;
-      return true
-    }
-    return false
+  this.addScore = function(points) {
+    score += points;
   }
+
+  this.getScore = function() {
+    return score
+  }
+
+  this.resetScore = () => {
+    score = 0;
+  }
+
+  this.willGrow = function(blocks) {
+    grow = blocks;
+  }
+
+  this.needToGrow = function() {
+    if(grow > 0){
+      grow--;
+      return false;
+    }
+    return true;
+  }
+}
+
+Snake.prototype.eat = function(food, type) {
+  this.addScore(type === 'normal' ? 1 : 9);
+  this.willGrow(type === 'normal' ? 1 : 40);
+  food.setNewLocation(this.body);
+}
+
+Snake.prototype.draw = function(ctx) {
+  this.body.forEach(el => {
+    ctx.fillStyle = 'white';
+    ctx.fillRect(el.x, el.y, this.scale, this.scale);
+    ctx.strokeStyle = 'red';
+    ctx.strokeRect(el.x, el.y, this.scale, this.scale);
+  })
+  ctx.fillStyle = 'green';
+  ctx.fillRect(this.body[0].x, this.body[0].y, this.scale, this.scale);
+}
+
+Snake.prototype.move = function() {
+  const dir = this.getDir();
+  const newHead = {
+    x: this.body[0].x,
+    y: this.body[0].y
+  }
+
+  if(dir === 'Left') {
+    if(newHead.x - scale < 0){
+      console.log('choco izquierda')
+    }
+    newHead.x -= scale;
+  }
+  if(dir === 'Right') {
+    if(newHead.x + scale > (this.columns - 1) * this.scale){
+      console.log('choco derecha')
+    }
+    newHead.x += scale;
+  }
+  if(dir === 'Up') {
+    if(newHead.y - scale < 0){
+      console.log('choco top')
+      this.body.reverse()
+      this.overideDir(['Down'])
+      newHead.y += scale;
+    } else {
+      newHead.y -= scale;
+    }
+  }
+  if(dir === "Down") {
+    if(newHead.y + scale > (this.rows - 1) * this.scale){
+      console.log('choco down')
+    }
+    newHead.y += scale;
+  }
+
+  if(hitRight = newHead.x > (this.columns - 1) * this.scale){
+    console.log('colision antes de mover')
+  }
+
+  this.needToGrow() && this.body.pop();
+  this.body.unshift(newHead);
+  this.head = this.body[0];
+}
+
+Snake.prototype.selfCollition = function() {
+  return this.body.find((el,idx,arr) => (idx !== 0 && idx !== arr.length - 1) && (el.x === this.head.x && el.y === this.head.y));
+}
+
+Snake.prototype.wallCollition = function() {
+  const hitTop = this.body[0].y < 0;
+  const hitLeft = this.body[0].x < 0;
+  const hitBottom = this.body[0].y > (this.rows - 1) * this.scale;
+  const hitRight = this.body[0].x > (this.columns - 1) * this.scale;
+  
+  return hitTop || hitLeft || hitBottom || hitRight
 }
