@@ -43,7 +43,9 @@ SpecialFood.prototype.setNewLocation = function(snakeBody) {
     }))
   } while (isOverSnake)
 
-  console.log(counter)
+  + new Date()
+  console.log(Math.floor(Date.now() / 1000))
+
 
   this.x = x;
   this.y = y;
